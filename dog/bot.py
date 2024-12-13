@@ -13,6 +13,11 @@ COMBINED_FILE = "combined.txt"
 DATA_FILE = "data.txt"
 LOG_FILE = "log.txt"
 
+# Konstanta status kode
+_3 = 400
+h1 = 402
+p1 = 404
+
 # Fungsi untuk mencatat hasil ke log
 def write_log(message):
     with open(LOG_FILE, "a") as log:
@@ -22,20 +27,24 @@ def write_log(message):
 def extract_user_ids():
     try:
         with open(COMBINED_FILE, "r") as file:
-            content = file.read().strip()
+            lines = file.readlines()
     except FileNotFoundError:
         print(f"\033[35mFile {COMBINED_FILE} tidak ditemukan.\033[0m")
         return []
 
-    parsed_content = urllib.parse.parse_qs(content)
-    
     user_ids = []
-    if 'user' in parsed_content:
-        for user_data in parsed_content['user']:
-            user_dict = json.loads(user_data.replace("'", '"'))
-            user_id = user_dict.get('id', None)
-            if user_id is not None:
-                user_ids.append(user_id)
+    for line in lines:
+        line = line.strip()
+        if line:  # Memastikan baris tidak kosong
+            parsed_content = urllib.parse.parse_qs(line)
+            if 'user' in parsed_content:
+                for user_data in parsed_content['user']:
+                    # Mendekode URL-encoded string dan mengubahnya menjadi JSON
+                    user_data_decoded = urllib.parse.unquote(user_data)
+                    user_dict = json.loads(user_data_decoded)
+                    user_id = user_dict.get('id', None)
+                    if user_id is not None:
+                        user_ids.append(user_id)
 
     if user_ids:
         with open(DATA_FILE, "w") as file:
@@ -60,7 +69,7 @@ def send_daily_login(user_id, day):
     try:
         response = requests.post(f"{DAILY_LOGIN_URL}?user_id={user_id}&day={day}")
         result = response.json()
-        if result.get("ok") is not False or result.get("error") == "already checked":
+        if result.get("ok") is not False:
             print(f"\033[35mUSER_ID {user_id}, DAY {day}: Success\033[0m")
             write_log(f"USER_ID {user_id}, DAY {day}: Success")
             return "Success"
@@ -118,9 +127,9 @@ def open_day(user_id):
 # Fungsi untuk menampilkan logo dan watermark
 def display_logo():
     print("\033[35m DDDD  \033[0m   \033[35m OOO  \033[0m   \033[35m GGGG  \033[0m  \033[35m SSSSS  \033[0m")
-    print("\033[35m D   D \033[0m  \033[35m O   O \033[0m  \033[35m G     \033[0m  \033[35m S     \033[0m")
+    print("\033[35m D   D \033[0m  \033[35m O   O \033[0m  \033[35m G     \033[0m   \033[35m S     \033[0m")
     print("\033[35m D   D \033[0m  \033[35m O   O \033[0m  \033[35m G  GG \033[0m   \033[35m SSSSS \033[0m")
-    print("\033[35m D   D \033[0m  \033[35m O   O \033[0m  \033[35m G   G \033[0m        \033[35m S     \033[0m")
+    print("\033[35m D   D \033[0m  \033[35m O   O \033[0m  \033[35m G   G \033[0m       \033[35m S     \033[0m")
     print("\033[35m DDDD  \033[0m   \033[35m OOO  \033[0m   \033[35m GGGG  \033[0m  \033[35m SSSSS  \033[0m")
 
     
@@ -158,7 +167,7 @@ while True:
             print("\033[35mTidak ada user_id yang ditemukan di data.txt.\033[0m")
     elif choice == '4':
         print("\033[35mKeluar dari program.\033[0m")
-        break
+        break  # Menambahkan 'break' untuk keluar dari loop
     else:
         print("\033[35mPilihan tidak valid. Silakan coba lagi.\033[0m")
 
